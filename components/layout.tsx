@@ -3,7 +3,7 @@
 import type React from "react"
 import { useState } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { LayoutDashboard, Target, Mail, Users, Gift, Settings, Menu, X, Bell } from "lucide-react"
@@ -25,6 +25,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
+  const router = useRouter()
+
+  const handleSettingsClick = () => {
+    router.push("/settings")
+  }
+
+  // Don't show layout on login page
+  if (pathname === "/login") {
+    return <>{children}</>
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800">
       {/* Header Section */}
@@ -42,7 +53,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 <Bell className="h-4 w-4 mr-2" />
                 <span className="hidden sm:inline">Notifications</span>
               </Button>
-              <Button variant="outline" size="sm" className="border-slate-700 text-slate-300 hover:bg-slate-800">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSettingsClick}
+                className="border-slate-700 text-slate-300 hover:bg-slate-800"
+              >
                 <Settings className="h-4 w-4 mr-2" />
                 <span className="hidden sm:inline">Settings</span>
               </Button>

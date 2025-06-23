@@ -516,7 +516,7 @@ export default function Emails() {
       const payload = {
         records: [
           {
-            email_ID: reviewingEmail.id, // Use email_ID to identify the record
+            email_id: reviewingEmail.id, // Changed from email_ID to email_id
             status: "approved", // Change status to approved
             final_email_subject: reviewFormData.subject, // Set final subject from form
             final_email_body: reviewFormData.body, // Set final body from form
@@ -525,7 +525,7 @@ export default function Emails() {
       }
 
       console.log("PATCH payload being sent:")
-      console.log("- email_ID:", payload.records[0].email_ID)
+      console.log("- email_id:", payload.records[0].email_id)
       console.log("- status:", payload.records[0].status)
       console.log("- final_email_subject:", payload.records[0].final_email_subject)
       console.log("- final_email_body (first 100 chars):", payload.records[0].final_email_body?.substring(0, 100))
@@ -1083,7 +1083,7 @@ export default function Emails() {
             {/* Table */}
             <div className="grid grid-cols-1 gap-6">
               {loading ? (
-                <LoadingTable rows={5} columns={5} />
+                <LoadingTable rows={5} columns={7} />
               ) : (
                 <Card className="bg-slate-900/90 border-slate-700/50">
                   <CardHeader className="flex flex-row items-center justify-between">
@@ -1091,45 +1091,28 @@ export default function Emails() {
                       <CardTitle className="text-xl text-white">Email Overview</CardTitle>
                       <p className="text-slate-400">Detailed email interactions and engagement data (newest first)</p>
                     </div>
-                    <div className="flex items-center space-x-4">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm text-slate-400">Status:</span>
-                        <Select value={statusFilter} onValueChange={setStatusFilter}>
-                          <SelectTrigger className="w-[120px] bg-slate-800 border-slate-700 text-white">
-                            <SelectValue placeholder="All" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-slate-800 border-slate-700 text-white">
-                            <SelectItem value="all">All</SelectItem>
-                            <SelectItem value="sent">Sent</SelectItem>
-                            <SelectItem value="pending_review">Pending Review</SelectItem>
-                            <SelectItem value="approved">Approved</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm text-slate-400">Reply:</span>
-                        <Select value={replyStatusFilter} onValueChange={setReplyStatusFilter}>
-                          <SelectTrigger className="w-[120px] bg-slate-800 border-slate-700 text-white">
-                            <SelectValue placeholder="All" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-slate-800 border-slate-700 text-white">
-                            <SelectItem value="all">All</SelectItem>
-                            <SelectItem value="Replied">
-                              <Badge
-                                variant="outline"
-                                className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-                              >
-                                Replied
-                              </Badge>
-                            </SelectItem>
-                            <SelectItem value="No Reply">
-                              <Badge variant="outline" className="bg-red-500/20 text-red-400 border-red-500/30">
-                                No Reply
-                              </Badge>
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                    <div className="flex space-x-2">
+                      <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger className="w-[140px] bg-slate-800 border-slate-700 text-white">
+                          <SelectValue placeholder="Status" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-800 border-slate-700 text-white">
+                          <SelectItem value="all">All Status</SelectItem>
+                          <SelectItem value="pending_review">Pending Review</SelectItem>
+                          <SelectItem value="approved">Approved</SelectItem>
+                          <SelectItem value="sent">Sent</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select value={replyStatusFilter} onValueChange={setReplyStatusFilter}>
+                        <SelectTrigger className="w-[140px] bg-slate-800 border-slate-700 text-white">
+                          <SelectValue placeholder="Reply Status" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-800 border-slate-700 text-white">
+                          <SelectItem value="all">All Replies</SelectItem>
+                          <SelectItem value="Replied">Replied</SelectItem>
+                          <SelectItem value="No Reply">No Reply</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -1137,11 +1120,13 @@ export default function Emails() {
                       <Table>
                         <TableHeader>
                           <TableRow className="border-slate-700">
+                            <TableHead className="text-slate-300 min-w-[120px]">Status</TableHead>
+                            <TableHead className="text-slate-300 min-w-[120px]">Reply Status</TableHead>
                             <TableHead className="text-slate-300 min-w-[150px]">Operator</TableHead>
                             <TableHead className="text-slate-300 min-w-[200px]">Incentive</TableHead>
-                            <TableHead className="text-slate-300 min-w-[100px]">Status</TableHead>
                             <TableHead className="text-slate-300 min-w-[120px]">Created</TableHead>
-                            <TableHead className="text-slate-300 min-w-[120px]">Reply Status</TableHead>
+                            <TableHead className="text-slate-300 min-w-[100px]">Follow Up 1</TableHead>
+                            <TableHead className="text-slate-300 min-w-[100px]">Follow Up 2</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -1152,6 +1137,38 @@ export default function Emails() {
 
                               return (
                                 <TableRow key={r.id} className="border-slate-700 hover:bg-slate-800/50">
+                                  <TableCell>
+                                    <Badge
+                                      variant={
+                                        r.fields?.Status === "sent"
+                                          ? "default"
+                                          : r.fields?.Status === "approved"
+                                            ? "secondary"
+                                            : "outline"
+                                      }
+                                      className={
+                                        r.fields?.Status === "sent"
+                                          ? "bg-green-600 text-white"
+                                          : r.fields?.Status === "approved"
+                                            ? "bg-blue-600 text-white"
+                                            : "bg-yellow-600 text-white"
+                                      }
+                                    >
+                                      {r.fields?.Status || "Unknown"}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Badge
+                                      variant={r.fields?.["Reply Status"] === "Replied" ? "default" : "outline"}
+                                      className={
+                                        r.fields?.["Reply Status"] === "Replied"
+                                          ? "bg-emerald-600 text-white"
+                                          : "bg-slate-600 text-slate-300"
+                                      }
+                                    >
+                                      {r.fields?.["Reply Status"] || "No Reply"}
+                                    </Badge>
+                                  </TableCell>
                                   <TableCell className="text-white">
                                     {operatorName.length > 20 ? (
                                       <UITooltip>
@@ -1180,72 +1197,67 @@ export default function Emails() {
                                       promotionName
                                     )}
                                   </TableCell>
-                                  <TableCell>
-                                    <Badge
-                                      variant="outline"
-                                      className={
-                                        r.fields?.Status === "approved"
-                                          ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-                                          : r.fields?.Status === "sent"
-                                            ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
-                                            : r.fields?.Status === "pending_review"
-                                              ? "bg-amber-500/20 text-amber-400 border-amber-500/30"
-                                              : "bg-slate-500/20 text-slate-400 border-slate-500/30"
-                                      }
-                                    >
-                                      {r.fields?.Status || "—"}
-                                    </Badge>
-                                  </TableCell>
                                   <TableCell className="text-slate-300">
                                     {formatDate(r.createdTime || r.fields?.created_time)}
                                   </TableCell>
-                                  <TableCell>
-                                    <Badge
-                                      variant="outline"
-                                      className={
-                                        r.fields?.["Reply Status"] === "Replied"
-                                          ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-                                          : "bg-red-500/20 text-red-400 border-red-500/30"
-                                      }
-                                    >
-                                      {r.fields?.["Reply Status"] || "—"}
-                                    </Badge>
+                                  <TableCell className="text-center">
+                                    <div className="flex justify-center">
+                                      {r.fields?.follow_up_1 ? (
+                                        <div className="w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center">
+                                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                            <path
+                                              fillRule="evenodd"
+                                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                              clipRule="evenodd"
+                                            />
+                                          </svg>
+                                        </div>
+                                      ) : (
+                                        <div className="w-5 h-5 bg-slate-600 rounded-full border border-slate-500"></div>
+                                      )}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    <div className="flex justify-center">
+                                      {r.fields?.follow_up_2 ? (
+                                        <div className="w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center">
+                                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                            <path
+                                              fillRule="evenodd"
+                                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                              clipRule="evenodd"
+                                            />
+                                          </svg>
+                                        </div>
+                                      ) : (
+                                        <div className="w-5 h-5 bg-slate-600 rounded-full border border-slate-500"></div>
+                                      )}
+                                    </div>
                                   </TableCell>
                                 </TableRow>
                               )
                             })
                           ) : (
                             <TableRow>
-                              <TableCell colSpan={5} className="text-center text-slate-400 py-8">
-                                No emails found matching the selected filters
+                              <TableCell colSpan={7} className="text-center text-slate-400 py-8">
+                                No emails found
                               </TableCell>
                             </TableRow>
                           )}
                         </TableBody>
                       </Table>
-                      {hasMoreRecords && !showAllRecords && (
-                        <div className="flex justify-center mt-4">
-                          <Button
-                            variant="outline"
-                            onClick={() => setShowAllRecords(true)}
-                            className="border-slate-600 text-slate-300 hover:bg-slate-800"
-                          >
-                            View More ({filteredRecords.length - RECORDS_PER_PAGE} more records)
-                          </Button>
-                        </div>
-                      )}
-                      {showAllRecords && hasMoreRecords && (
-                        <div className="flex justify-center mt-4">
-                          <Button
-                            variant="outline"
-                            onClick={() => setShowAllRecords(false)}
-                            className="border-slate-600 text-slate-300 hover:bg-slate-800"
-                          >
-                            Show Less
-                          </Button>
-                        </div>
-                      )}
                     </div>
+                    {hasMoreRecords && (
+                      <div className="flex justify-center mt-4">
+                        <Button
+                          variant="outline"
+                          onClick={() => setShowAllRecords(!showAllRecords)}
+                          className="border-slate-600 text-slate-300 hover:bg-slate-800"
+                        >
+                          {showAllRecords ? "Show Less" : `Show All (${filteredRecords.length} total)`}
+                        </Button>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}

@@ -4,6 +4,14 @@ const SUPABASE_URL = "https://kojsqibukbqamtngxrsc.supabase.co"
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtvanNxaWJ1a2JxYW10bmd4cnNjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4MDA2NjksImV4cCI6MjA2NTM3NjY2OX0.4PVEtHMI2UAxNKEWO3etaSg8_qff7vPiyd90FkICCtE"
 
+// Helper function to handle the specific operator ID change
+function normalizeOperatorId(operatorId: string): string {
+  if (operatorId === "6 bis") {
+    return "6_bis"
+  }
+  return operatorId
+}
+
 // Helper function to get incentive name by checking the incentives table structure
 async function getIncentiveName(incentiveId: string | number): Promise<string> {
   if (!incentiveId) return "Unknown Incentive"
@@ -201,16 +209,22 @@ export async function POST(request: NextRequest) {
     let operatorName = operator
     let incentiveName = incentive
 
-    // Convert operator ID to name if needed
+    // Convert operator ID to name if needed, with normalization
     if (operator && (typeof operator === "number" || operator.toString().match(/^\d+$/))) {
       try {
-        const operatorResponse = await fetch(`${SUPABASE_URL}/rest/v1/operators?id=eq.${operator}&select=operator`, {
-          headers: {
-            apikey: SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-            "Content-Type": "application/json",
+        const normalizedOperatorId = normalizeOperatorId(operator.toString())
+        console.log("Looking up operator with normalized ID:", normalizedOperatorId)
+
+        const operatorResponse = await fetch(
+          `${SUPABASE_URL}/rest/v1/operators?id=eq.${normalizedOperatorId}&select=operator`,
+          {
+            headers: {
+              apikey: SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+              "Content-Type": "application/json",
+            },
           },
-        })
+        )
 
         if (operatorResponse.ok) {
           const operatorData = await operatorResponse.json()
@@ -289,20 +303,26 @@ export async function PATCH(request: NextRequest) {
 
     const updateData: any = {}
 
-    // Convert operator ID to name if needed
+    // Convert operator ID to name if needed, with normalization
     if (body.fields["Linked Operator"]) {
       const operator = body.fields["Linked Operator"][0]
       let operatorName = operator
 
       if (operator && (typeof operator === "number" || operator.toString().match(/^\d+$/))) {
         try {
-          const operatorResponse = await fetch(`${SUPABASE_URL}/rest/v1/operators?id=eq.${operator}&select=operator`, {
-            headers: {
-              apikey: SUPABASE_ANON_KEY,
-              Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-              "Content-Type": "application/json",
+          const normalizedOperatorId = normalizeOperatorId(operator.toString())
+          console.log("Looking up operator with normalized ID:", normalizedOperatorId)
+
+          const operatorResponse = await fetch(
+            `${SUPABASE_URL}/rest/v1/operators?id=eq.${normalizedOperatorId}&select=operator`,
+            {
+              headers: {
+                apikey: SUPABASE_ANON_KEY,
+                Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+                "Content-Type": "application/json",
+              },
             },
-          })
+          )
 
           if (operatorResponse.ok) {
             const operatorData = await operatorResponse.json()

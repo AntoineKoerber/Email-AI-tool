@@ -4,6 +4,14 @@ const SUPABASE_URL = "https://kojsqibukbqamtngxrsc.supabase.co"
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtvanNxaWJ1a2JxYW10bmd4cnNjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4MDA2NjksImV4cCI6MjA2NTM3NjY2OX0.4PVEtHMI2UAxNKEWO3etaSg8_qff7vPiyd90FkICCtE"
 
+// Helper function to handle the specific operator ID change
+function normalizeOperatorId(operatorId: string): string {
+  if (operatorId === "6 bis") {
+    return "6_bis"
+  }
+  return operatorId
+}
+
 // Helper function to generate a unique ID
 function generateUniqueId(): string {
   return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
@@ -31,6 +39,8 @@ function transformOperatorRecord(record: any) {
       "Engagement Status": record.engagement_status
         ? record.engagement_status.charAt(0).toUpperCase() + record.engagement_status.slice(1)
         : null,
+      "Communication Call": record.comm_call || false,
+      "Communication Message": record.comm_message || false,
       "Last Modified Time": record.updated_at || record.created_at,
     },
     createdTime: record.created_at,
@@ -132,6 +142,15 @@ export async function POST(request: NextRequest) {
       supabaseRecord.engagement_status = statusMap[frontendStatus] || frontendStatus.toLowerCase()
     }
 
+    // Add communication preferences if provided
+    if (body.records[0].fields["Communication Call"]) {
+      supabaseRecord.comm_call = body.records[0].fields["Communication Call"]
+    }
+
+    if (body.records[0].fields["Communication Message"]) {
+      supabaseRecord.comm_message = body.records[0].fields["Communication Message"]
+    }
+
     console.log("Attempting to insert with unique ID:", supabaseRecord)
 
     const response = await fetch(`${SUPABASE_URL}/rest/v1/operators`, {
@@ -172,7 +191,10 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json()
     console.log("PATCH request body:", body)
 
-    const recordId = body.recordId
+    // Normalize the record ID to handle the "6 bis" -> "6_bis" case
+    const recordId = normalizeOperatorId(body.recordId)
+    console.log("Original record ID:", body.recordId, "Normalized:", recordId)
+
     const updateData: any = {}
 
     // Update allowed fields (not the primary key fields)
@@ -202,9 +224,18 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
+    // Handle communication preferences
+    if (body.fields["Communication Call"] !== undefined) {
+      updateData.comm_call = body.fields["Communication Call"]
+    }
+
+    if (body.fields["Communication Message"] !== undefined) {
+      updateData.comm_message = body.fields["Communication Message"]
+    }
+
     console.log("Update data for record ID:", recordId, updateData)
 
-    // Use the unique ID field for the update query
+    // Use the normalized ID field for the update query
     const response = await fetch(`${SUPABASE_URL}/rest/v1/operators?id=eq.${recordId}`, {
       method: "PATCH",
       headers: {

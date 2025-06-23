@@ -61,6 +61,23 @@ function capitalizeFirstLetter(str: string) {
   return str.charAt(0).toUpperCase() + str.slice(1)
 }
 
+// Helper function to handle communication preference validation
+function handleCommPreferenceChange(type: "call" | "message", checked: boolean, currentFormData: any) {
+  if (type === "call") {
+    return {
+      ...currentFormData,
+      commCall: checked,
+      commMessage: checked ? false : currentFormData.commMessage,
+    }
+  } else {
+    return {
+      ...currentFormData,
+      commMessage: checked,
+      commCall: checked ? false : currentFormData.commCall,
+    }
+  }
+}
+
 export default function Operators() {
   const [loading, setLoading] = useState(true)
   const [records, setRecords] = useState<any[]>([])
@@ -77,8 +94,10 @@ export default function Operators() {
     country: "",
     language: "",
     contactEmail: "",
-    engagementStatus: "none",
+    engagementStatus: "",
     tags: [] as string[],
+    commCall: false,
+    commMessage: false,
   })
   const [formError, setFormError] = useState<string | null>(null)
 
@@ -225,12 +244,19 @@ export default function Operators() {
         "Contact Email": formData.contactEmail,
       }
 
-      // Only add optional fields if they exist and have values
-      if (formData.engagementStatus && formData.engagementStatus !== "none") {
-        fields["Engagement Status"] = formData.engagementStatus.toLowerCase() // Convert to lowercase for Supabase
-      }
+      // Add required engagement status
+      fields["Engagement Status"] = formData.engagementStatus.toLowerCase() // Convert to lowercase for Supabase
+
       if (formData.tags.length > 0) {
         fields.Tags = formData.tags
+      }
+
+      // Add communication preferences if selected
+      if (formData.commCall) {
+        fields["Communication Call"] = formData.commCall
+      }
+      if (formData.commMessage) {
+        fields["Communication Message"] = formData.commMessage
       }
 
       const payload = {
@@ -263,8 +289,10 @@ export default function Operators() {
         country: "",
         language: "",
         contactEmail: "",
-        engagementStatus: "none",
+        engagementStatus: "",
         tags: [],
+        commCall: false,
+        commMessage: false,
       })
 
       // Refresh the data
@@ -293,8 +321,10 @@ export default function Operators() {
       country: record.fields?.Country || "",
       language: record.fields?.["Preferred Language"] || "",
       contactEmail: record.fields?.["Contact Email"] || "",
-      engagementStatus: record.fields?.["Engagement Status"] || "none",
+      engagementStatus: record.fields?.["Engagement Status"] || "",
       tags: Array.isArray(record.fields?.Tags) ? record.fields.Tags : [],
+      commCall: record.fields?.["Communication Call"] || false,
+      commMessage: record.fields?.["Communication Message"] || false,
     })
     setShowEditForm(true)
   }
@@ -315,12 +345,19 @@ export default function Operators() {
         "Contact Email": formData.contactEmail,
       }
 
-      // Only add optional fields if they exist and have values
-      if (formData.engagementStatus && formData.engagementStatus !== "none") {
-        fields["Engagement Status"] = formData.engagementStatus.toLowerCase() // Convert to lowercase for Supabase
-      }
+      // Add required engagement status
+      fields["Engagement Status"] = formData.engagementStatus.toLowerCase() // Convert to lowercase for Supabase
+
       if (formData.tags.length > 0) {
         fields.Tags = formData.tags
+      }
+
+      // Add communication preferences if selected
+      if (formData.commCall) {
+        fields["Communication Call"] = formData.commCall
+      }
+      if (formData.commMessage) {
+        fields["Communication Message"] = formData.commMessage
       }
 
       const payload = {
@@ -350,8 +387,10 @@ export default function Operators() {
         country: "",
         language: "",
         contactEmail: "",
-        engagementStatus: "none",
+        engagementStatus: "",
         tags: [],
+        commCall: false,
+        commMessage: false,
       })
 
       // Refresh the data
@@ -464,16 +503,16 @@ export default function Operators() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="engagementStatus">Engagement Status (Optional)</Label>
+                    <Label htmlFor="engagementStatus">Engagement Status *</Label>
                     <Select
                       value={formData.engagementStatus}
                       onValueChange={(value) => setFormData({ ...formData, engagementStatus: value })}
+                      required
                     >
                       <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
-                        <SelectValue placeholder="Select engagement status (optional)" />
+                        <SelectValue placeholder="Select engagement status" />
                       </SelectTrigger>
                       <SelectContent className="bg-slate-800 border-slate-700 text-white">
-                        <SelectItem value="none">None</SelectItem>
                         {engagementStatuses.map((status) => (
                           <SelectItem key={status} value={status}>
                             {status}
@@ -490,6 +529,40 @@ export default function Operators() {
                       onChange={(tags) => setFormData({ ...formData, tags })}
                       placeholder="Select tags (optional)..."
                     />
+                  </div>
+                  <div>
+                    <Label>Communication Preferences (Optional)</Label>
+                    <div className="flex items-center space-x-6 mt-2">
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="commCall"
+                          checked={formData.commCall}
+                          onChange={(e) => setFormData(handleCommPreferenceChange("call", e.target.checked, formData))}
+                          className="h-4 w-4 text-blue-600 bg-slate-800 border-slate-600 rounded focus:ring-blue-500 focus:ring-2"
+                        />
+                        <Label htmlFor="commCall" className="text-sm text-slate-300">
+                          Call
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="commMessage"
+                          checked={formData.commMessage}
+                          onChange={(e) =>
+                            setFormData(handleCommPreferenceChange("message", e.target.checked, formData))
+                          }
+                          className="h-4 w-4 text-blue-600 bg-slate-800 border-slate-600 rounded focus:ring-blue-500 focus:ring-2"
+                        />
+                        <Label htmlFor="commMessage" className="text-sm text-slate-300">
+                          Message
+                        </Label>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Select preferred communication method (only one allowed)
+                    </p>
                   </div>
                   <div className="flex justify-end space-x-2">
                     <Button type="button" variant="outline" onClick={() => setShowAddForm(false)}>
@@ -581,16 +654,16 @@ export default function Operators() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="editEngagementStatus">Engagement Status (Optional)</Label>
+                  <Label htmlFor="editEngagementStatus">Engagement Status *</Label>
                   <Select
                     value={formData.engagementStatus}
                     onValueChange={(value) => setFormData({ ...formData, engagementStatus: value })}
+                    required
                   >
                     <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
-                      <SelectValue placeholder="Select engagement status (optional)" />
+                      <SelectValue placeholder="Select engagement status" />
                     </SelectTrigger>
                     <SelectContent className="bg-slate-800 border-slate-700 text-white">
-                      <SelectItem value="none">None</SelectItem>
                       {engagementStatuses.map((status) => (
                         <SelectItem key={status} value={status}>
                           {status}
@@ -607,6 +680,38 @@ export default function Operators() {
                     onChange={(tags) => setFormData({ ...formData, tags })}
                     placeholder="Select tags (optional)..."
                   />
+                </div>
+                <div>
+                  <Label>Communication Preferences (Optional)</Label>
+                  <div className="flex items-center space-x-6 mt-2">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="editCommCall"
+                        checked={formData.commCall}
+                        onChange={(e) => setFormData(handleCommPreferenceChange("call", e.target.checked, formData))}
+                        className="h-4 w-4 text-blue-600 bg-slate-800 border-slate-600 rounded focus:ring-blue-500 focus:ring-2"
+                      />
+                      <Label htmlFor="editCommCall" className="text-sm text-slate-300">
+                        Call
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="editCommMessage"
+                        checked={formData.commMessage}
+                        onChange={(e) => setFormData(handleCommPreferenceChange("message", e.target.checked, formData))}
+                        className="h-4 w-4 text-blue-600 bg-slate-800 border-slate-600 rounded focus:ring-blue-500 focus:ring-2"
+                      />
+                      <Label htmlFor="editCommMessage" className="text-sm text-slate-300">
+                        Message
+                      </Label>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Select preferred communication method (only one allowed)
+                  </p>
                 </div>
                 <div className="flex justify-end space-x-2">
                   <Button type="button" variant="outline" onClick={() => setShowEditForm(false)}>
@@ -726,6 +831,8 @@ export default function Operators() {
                           <TableHead className="text-slate-300 min-w-[200px]">Contact Email</TableHead>
                           <TableHead className="text-slate-300 min-w-[150px]">Tags</TableHead>
                           <TableHead className="text-slate-300 min-w-[120px]">Engagement</TableHead>
+                          <TableHead className="text-slate-300 min-w-[80px]">Call</TableHead>
+                          <TableHead className="text-slate-300 min-w-[80px]">Message</TableHead>
                           <TableHead className="text-slate-300 min-w-[80px]">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -803,6 +910,22 @@ export default function Operators() {
                                 <TableCell className="text-slate-300">
                                   {record.fields?.["Engagement Status"] || "—"}
                                 </TableCell>
+                                <TableCell className="text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={record.fields?.["Communication Call"] || false}
+                                    readOnly
+                                    className="h-4 w-4 text-blue-600 bg-slate-800 border-slate-600 rounded focus:ring-blue-500 focus:ring-2 cursor-default"
+                                  />
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={record.fields?.["Communication Message"] || false}
+                                    readOnly
+                                    className="h-4 w-4 text-blue-600 bg-slate-800 border-slate-600 rounded focus:ring-blue-500 focus:ring-2 cursor-default"
+                                  />
+                                </TableCell>
                                 <TableCell>
                                   <Button
                                     size="sm"
@@ -818,7 +941,7 @@ export default function Operators() {
                           })
                         ) : (
                           <TableRow>
-                            <TableCell colSpan={8} className="text-center text-slate-400 py-8">
+                            <TableCell colSpan={10} className="text-center text-slate-400 py-8">
                               No operators found matching the selected filters
                             </TableCell>
                           </TableRow>

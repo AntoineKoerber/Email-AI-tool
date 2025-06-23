@@ -4,11 +4,19 @@ const SUPABASE_URL = "https://kojsqibukbqamtngxrsc.supabase.co"
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtvanNxaWJ1a2JxYW10bmd4cnNjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4MDA2NjksImV4cCI6MjA2NTM3NjY2OX0.4PVEtHMI2UAxNKEWO3etaSg8_qff7vPiyd90FkICCtE"
 
+// Helper function to handle the specific operator ID change
+function normalizeOperatorId(operatorId: string): string {
+  if (operatorId === "6 bis") {
+    return "6_bis"
+  }
+  return operatorId
+}
+
 // Transform Supabase data to match frontend expectations
 function transformEmailRecord(record: any) {
   return {
-    // Use email_ID as the primary identifier since that's what we're creating
-    id: record.email_ID || record.id,
+    // Use email_id as the primary identifier (updated from email_ID)
+    id: record.email_id || record.id,
     fields: {
       Status: record.status,
       "Reply Status": record.reply_status,
@@ -20,6 +28,8 @@ function transformEmailRecord(record: any) {
       generated_email_body: record.generated_email_body,
       final_email_subject: record.final_email_subject,
       final_email_body: record.final_email_body,
+      follow_up_1: record.follow_up_1,
+      follow_up_2: record.follow_up_2,
     },
     // Use the Supabase created_time directly
     createdTime: record.created_time,
@@ -101,7 +111,10 @@ export async function POST(request: NextRequest) {
     operatorRecords.forEach((op: any) => {
       const operatorId = op.id || `op-${op.fields?.["Operator Name"] || op.operator || "unknown"}`
       const operatorName = op.fields?.["Operator Name"] || op.operator || "Unknown"
+
+      // Store both original and normalized IDs
       operatorMap.set(operatorId, operatorName)
+      operatorMap.set(normalizeOperatorId(operatorId), operatorName)
     })
 
     const incentiveMap = new Map()
@@ -150,7 +163,8 @@ export async function POST(request: NextRequest) {
       console.log("- Raw operator ID:", operatorId)
       console.log("- Raw incentive ID:", incentiveId)
 
-      const operatorName = operatorMap.get(operatorId) || "Unknown"
+      // Try both original and normalized operator ID
+      const operatorName = operatorMap.get(operatorId) || operatorMap.get(normalizeOperatorId(operatorId)) || "Unknown"
 
       // Try to find incentive name with the exact ID first
       const incentiveName = incentiveMap.get(String(incentiveId)) || incentiveMap.get(incentiveId) || "Unknown"
@@ -166,7 +180,7 @@ export async function POST(request: NextRequest) {
       console.log("- Created time:", currentTime)
 
       return {
-        email_ID: emailId,
+        email_id: emailId, // Updated from email_ID to email_id
         status: record.fields.Status || "pending_review",
         reply_status: record.fields["Reply Status"] || "No Reply",
         operator: operatorName,
@@ -175,6 +189,8 @@ export async function POST(request: NextRequest) {
         generated_email_subject: record.fields.generated_email_subject || "",
         generated_email_body: record.fields.generated_email_body || "",
         ai_answered: record.fields.ai_answered || false,
+        follow_up_1: false, // Default to false for new records
+        follow_up_2: false, // Default to false for new records
       }
     })
 
@@ -218,13 +234,13 @@ export async function PATCH(request: NextRequest) {
     // Handle single record update
     if (body.records && body.records.length > 0) {
       const record = body.records[0]
-      const searchId = record.email_ID // Use email_ID directly
+      const searchId = record.email_id // Updated from email_ID to email_id
 
-      console.log("Looking for record with email_ID:", searchId)
+      console.log("Looking for record with email_id:", searchId)
 
       // First, let's check if the record exists and what columns are available
       console.log("=== CHECKING RECORD EXISTS ===")
-      const checkResponse = await fetch(`${SUPABASE_URL}/rest/v1/emails?email_ID=eq.${searchId}`, {
+      const checkResponse = await fetch(`${SUPABASE_URL}/rest/v1/emails?email_id=eq.${searchId}`, {
         headers: {
           apikey: SUPABASE_ANON_KEY,
           Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
@@ -239,7 +255,7 @@ export async function PATCH(request: NextRequest) {
           console.log("Existing record structure:", Object.keys(existingRecords[0]))
           console.log("Existing record data:", existingRecords[0])
         } else {
-          console.log("No records found with email_ID:", searchId)
+          console.log("No records found with email_id:", searchId)
           return NextResponse.json({ error: "Record not found" }, { status: 404 })
         }
       }
@@ -261,25 +277,8 @@ export async function PATCH(request: NextRequest) {
 
       console.log("Update data being sent:", updateData)
 
-      // Let's also try to get the table schema to see what columns exist
-      console.log("=== CHECKING TABLE SCHEMA ===")
-      try {
-        const schemaResponse = await fetch(`${SUPABASE_URL}/rest/v1/emails?limit=1`, {
-          method: "HEAD",
-          headers: {
-            apikey: SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-            "Content-Type": "application/json",
-            Prefer: "return=headers-only",
-          },
-        })
-        console.log("Schema response headers:", Object.fromEntries(schemaResponse.headers.entries()))
-      } catch (schemaError) {
-        console.log("Could not fetch schema:", schemaError)
-      }
-
-      // Perform the update using the email_ID directly
-      const updateUrl = `${SUPABASE_URL}/rest/v1/emails?email_ID=eq.${searchId}`
+      // Perform the update using the email_id directly
+      const updateUrl = `${SUPABASE_URL}/rest/v1/emails?email_id=eq.${searchId}`
       console.log("Update URL:", updateUrl)
 
       const updateResponse = await fetch(updateUrl, {
@@ -318,7 +317,7 @@ export async function PATCH(request: NextRequest) {
       // If no data returned, fetch the updated record manually
       if (!updatedData || updatedData.length === 0) {
         console.log("No data returned from update, fetching updated record...")
-        const fetchResponse = await fetch(`${SUPABASE_URL}/rest/v1/emails?email_ID=eq.${searchId}`, {
+        const fetchResponse = await fetch(`${SUPABASE_URL}/rest/v1/emails?email_id=eq.${searchId}`, {
           headers: {
             apikey: SUPABASE_ANON_KEY,
             Authorization: `Bearer ${SUPABASE_ANON_KEY}`,

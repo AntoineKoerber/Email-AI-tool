@@ -3,18 +3,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import {
-  AlertTriangle,
-  Clock,
-  MessageSquareX,
-  Calendar,
-  TrendingDown,
-  CheckCircle2,
-  ArrowRight,
-  Bell,
-  Zap,
-} from "lucide-react"
+import { Clock, MessageSquareX, Calendar, CheckCircle2, ArrowRight, Bell, Zap } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface NotificationItem {
@@ -24,6 +13,7 @@ interface NotificationItem {
   icon: any
   description: string
   action?: string
+  filterUrl?: string
 }
 
 export function NotificationCard() {
@@ -52,7 +42,17 @@ export function NotificationCard() {
         const promotions = promotionsData.records || []
 
         // Calculate notification counts
-        const noReplyCount = emails.filter((email: any) => email.fields?.["Reply Status"] === "No Reply").length
+        const noReplyCount = emails.filter(
+          (email: any) => email.fields?.["Reply Status"] === "No Reply" && email.fields?.["follow_up_1"] === false,
+        ).length
+
+        const waitingBookingCount = emails.filter(
+          (email: any) => email.fields?.["ai_answered"] === true && email.fields?.["booking_done"] === false,
+        ).length
+
+        const bookedCount = emails.filter((email: any) => email.fields?.["booking_done"] === true).length
+
+        // Keep the existing endingSoonCount logic for campaigns
 
         const endingSoonCount = campaigns.filter((campaign: any) => {
           const endDate = campaign.fields?.["End Date"]
@@ -63,25 +63,6 @@ export function NotificationCard() {
           return daysUntilEnd <= 7 && daysUntilEnd > 0
         }).length
 
-        const missingFeedbackCount = campaigns.filter(
-          (campaign: any) => !campaign.fields?.["Start Date"] || !campaign.fields?.["End Date"],
-        ).length
-
-        const lowPerformingCount = emails.filter((email: any) => {
-          // Simulate low performing emails (no opens after 3 days)
-          const created = email.fields?.["Created Time"]
-          if (!created) return false
-          const createdDate = new Date(created)
-          const now = new Date()
-          const daysSinceCreated = Math.ceil((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24))
-          return daysSinceCreated > 3 && email.fields?.["Reply Status"] === "No Reply"
-        }).length
-
-        const expiredPromotionsCount = promotions.filter((promo: any) => {
-          // Simulate expired promotions that need review
-          return Math.random() > 0.8 // 20% chance for demo
-        }).length
-
         const notificationItems: NotificationItem[] = [
           {
             type: "No Reply",
@@ -90,6 +71,7 @@ export function NotificationCard() {
             icon: MessageSquareX,
             description: "Emails awaiting response",
             action: "Follow up",
+            filterUrl: "/emails?filter=no-reply",
           },
           {
             type: "Ending Soon",
@@ -98,30 +80,25 @@ export function NotificationCard() {
             icon: Clock,
             description: "Campaigns ending within 7 days",
             action: "Review",
+            filterUrl: "/campaigns?filter=ending-soon",
           },
           {
-            type: "Missing Details",
-            count: missingFeedbackCount,
+            type: "Waiting Booking",
+            count: waitingBookingCount,
             urgency: "medium",
-            icon: AlertTriangle,
-            description: "Campaigns missing dates",
-            action: "Complete",
-          },
-          {
-            type: "Low Performance",
-            count: lowPerformingCount,
-            urgency: "low",
-            icon: TrendingDown,
-            description: "Emails with no engagement",
-            action: "Optimize",
-          },
-          {
-            type: "Review Needed",
-            count: expiredPromotionsCount,
-            urgency: "low",
             icon: Calendar,
-            description: "Promotions need review",
-            action: "Update",
+            description: "AI answered, booking pending",
+            action: "Book",
+            filterUrl: "/emails?filter=waiting-booking",
+          },
+          {
+            type: "Booked",
+            count: bookedCount,
+            urgency: "low",
+            icon: CheckCircle2,
+            description: "Meetings booked",
+            action: "View",
+            filterUrl: "/emails?filter=booked",
           },
         ].filter((item) => item.count > 0)
 
@@ -203,20 +180,25 @@ export function NotificationCard() {
       </CardHeader>
       <CardContent>
         {notifications.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <CheckCircle2 className="h-12 w-12 text-emerald-400 mb-3" />
-            <p className="text-white font-medium">All caught up!</p>
-            <p className="text-slate-400 text-sm">No pending action items</p>
+          <div className="flex flex-col items-center justify-center py-6 text-center">
+            <CheckCircle2 className="h-10 w-10 text-emerald-400 mb-2" />
+            <p className="text-white font-medium text-sm">All caught up!</p>
+            <p className="text-slate-400 text-xs">No pending action items</p>
           </div>
         ) : (
-          <div className="space-y-3 max-h-80 overflow-y-auto">
-            {notifications.map((notification, index) => {
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {notifications.slice(0, 4).map((notification, index) => {
               const Icon = notification.icon
               return (
                 <div
                   key={index}
+                  onClick={() => {
+                    if (notification.filterUrl) {
+                      window.location.href = notification.filterUrl
+                    }
+                  }}
                   className={cn(
-                    "group flex items-center justify-between p-4 rounded-lg border transition-all duration-200 hover:scale-[1.02] cursor-pointer",
+                    "group flex items-center justify-between p-3 rounded-md border transition-all duration-200 hover:scale-[1.01] cursor-pointer",
                     notification.urgency === "high"
                       ? "bg-red-900/20 border-red-500/30 hover:bg-red-900/30"
                       : notification.urgency === "medium"
@@ -224,10 +206,10 @@ export function NotificationCard() {
                         : "bg-blue-900/20 border-blue-500/30 hover:bg-blue-900/30",
                   )}
                 >
-                  <div className="flex items-center space-x-3">
+                  <div className="flex items-center space-x-3 flex-1 min-w-0">
                     <div
                       className={cn(
-                        "p-2 rounded-full",
+                        "p-1.5 rounded-full flex-shrink-0",
                         notification.urgency === "high"
                           ? "bg-red-500/20"
                           : notification.urgency === "medium"
@@ -237,7 +219,7 @@ export function NotificationCard() {
                     >
                       <Icon
                         className={cn(
-                          "h-4 w-4",
+                          "h-3 w-3",
                           notification.urgency === "high"
                             ? "text-red-400"
                             : notification.urgency === "medium"
@@ -247,31 +229,31 @@ export function NotificationCard() {
                       />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-2">
-                        <p className="text-sm font-medium text-white">{notification.type}</p>
-                        <Badge variant="outline" className={getUrgencyColor(notification.urgency)}>
-                          {getUrgencyIcon(notification.urgency)}
-                          <span className="ml-1">{notification.count}</span>
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium text-white truncate">{notification.type}</p>
+                        <Badge
+                          variant="outline"
+                          className={cn("ml-2 flex-shrink-0", getUrgencyColor(notification.urgency))}
+                        >
+                          <span>{notification.count}</span>
                         </Badge>
                       </div>
-                      <p className="text-xs text-slate-400">{notification.description}</p>
+                      <p className="text-xs text-slate-400 truncate">{notification.description}</p>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    {notification.action && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 px-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        {notification.action}
-                        <ArrowRight className="h-3 w-3 ml-1" />
-                      </Button>
-                    )}
+                  <div className="flex items-center ml-2">
+                    <ArrowRight className="h-3 w-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                 </div>
               )
             })}
+            {notifications.length > 4 && (
+              <div className="pt-2 border-t border-slate-700/50">
+                <button className="w-full text-xs text-slate-400 hover:text-white transition-colors py-1">
+                  +{notifications.length - 4} more items
+                </button>
+              </div>
+            )}
           </div>
         )}
       </CardContent>
